@@ -73,6 +73,8 @@ void Game::Initialize(HWND window, int width, int height)
 	m_modelSkydome = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/skydome.cmo", *m_factory);
 	//モデルの生成
 	m_modelGround = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/Ground1m.cmo", *m_factory);
+
+	m_modelBall = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/ball.cmo", *m_factory);
 }
 
 // Executes the basic game loop.
@@ -95,6 +97,54 @@ void Game::Update(DX::StepTimer const& timer)
     elapsedTime;
 	//毎フレーム処理を書く
 	m_debugCamera->Update();
+
+
+	for (int i = 0; i < 20; i++)
+	{
+		//ワールド行列の計算
+		//スケーリング
+		Matrix scalemat = Matrix::CreateScale(1.0f);
+
+		//ロール
+		Matrix rotmatz = Matrix::CreateRotationZ(0);
+		//ピッチ（仰角）
+		Matrix rotmatx = Matrix::CreateRotationX(0);
+		//ヨー（方位角）
+		Matrix rotmaty[20];
+		rotmaty[i] = Matrix::CreateRotationY(XMConvertToRadians(36 * i));
+
+		static float angle = 0.0f;
+		angle += 0.001f;
+		static float angle2 = 0.0f;
+		angle2 -= 0.001f;
+
+		Matrix rot = Matrix::CreateRotationY(angle);
+		Matrix rot2 = Matrix::CreateRotationY(angle2);
+
+		//回転行列の合成
+		Matrix rotmat[20];
+
+		rotmat[i] = rotmatz * rotmatx * rot * rotmaty[i];
+		if (i > 9)
+		{
+			rotmat[i] = rotmatz * rotmatx * rot2 * rotmaty[i];
+		}
+
+		//平行移動
+		Matrix tranamat = Matrix::CreateTranslation(20, 0, 0);
+
+		//ワールド行列の合成(SRT)
+
+		m_worldBall[i] = scalemat * tranamat * rotmat[i];
+		if (i > 9)
+		{
+			tranamat = Matrix::CreateTranslation(40, 0, 0);
+			m_worldBall[i] = scalemat * tranamat * rotmat[i];
+		}
+
+
+	}
+	
 }
 
 // Draws the scene.
@@ -152,6 +202,11 @@ void Game::Render()
 	//モデルの描画
 	m_modelSkydome->Draw(m_d3dContext.Get(), *m_states, m_world, m_view, m_proj);
 	m_modelGround->Draw(m_d3dContext.Get(), *m_states, m_world, m_view, m_proj);
+	for (int i = 0; i < 20; i++)
+	{
+		m_modelBall->Draw(m_d3dContext.Get(), *m_states, m_worldBall[i], m_view, m_proj);
+	}
+	
 	
 
 	m_batch->Begin();
