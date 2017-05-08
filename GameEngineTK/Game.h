@@ -11,8 +11,9 @@
 #include <CommonStates.h>
 #include <SimpleMath.h>
 #include <Model.h>
+#include <ctime>
 #include "DebugCamera.h"
-
+#include <Keyboard.h>
 
 
 // A basic game implementation that creates a D3D11 device and
@@ -80,7 +81,7 @@ private:
 	//汎用ステート設定
 	std::unique_ptr<DirectX::CommonStates> m_states;
 	//ワールド行列
-	DirectX::SimpleMath::Matrix m_world;
+	//DirectX::SimpleMath::Matrix m_world;
 	//ビュー行列
 	DirectX::SimpleMath::Matrix m_view;
 	//プロジェクション行列
@@ -97,8 +98,30 @@ private:
 	std::unique_ptr<DirectX::Model> m_modelGround;
 	//球モデル
 	std::unique_ptr<DirectX::Model> m_modelBall;
+	//ティーポットモデル
+	std::unique_ptr<DirectX::Model> m_modelPot;
+	//脚部モデル
+	std::unique_ptr<DirectX::Model> m_modelfoot;
 	
 	//球のワールド行列
 	DirectX::SimpleMath::Matrix m_worldBall[20];
-	DirectX::SimpleMath::Matrix m_worldGround[20000];
+
+	DirectX::SimpleMath::Matrix m_worldPot[20];
+
+	//キーボード
+	std::unique_ptr<DirectX::Keyboard> m_keyboard;
+
+	//自機の座標
+	DirectX::SimpleMath::Vector3 foot_pos;
+	//自機のワールド行列
+	DirectX::SimpleMath::Matrix m_worldfoot;
+
+	float m_rot;
+
+	int rnd[20];
+	int rnd2[20];
+
+	float n;
+	int cnt;
+	int cnt2;
 };

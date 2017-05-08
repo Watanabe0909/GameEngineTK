@@ -72,9 +72,28 @@ void Game::Initialize(HWND window, int width, int height)
 	//モデルの生成
 	m_modelSkydome = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/skydome.cmo", *m_factory);
 	//モデルの生成
-	m_modelGround = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/Ground1m.cmo", *m_factory);
-
+	m_modelGround = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/Ground200m.cmo", *m_factory);
+	//モデルの生成
 	m_modelBall = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/ball.cmo", *m_factory);
+	//モデルの生成
+	m_modelPot = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/Teapot.cmo", *m_factory);
+
+	m_modelfoot = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/foot.cmo", *m_factory);
+
+	m_keyboard = std::make_unique<Keyboard>();
+
+	for (int i = 0; i < 20; i++)
+	{
+		rnd[i] = rand() % 360;
+
+		rnd2[i] = rand() % 80;
+	}
+
+	cnt = 0;
+	n = 1.0f;
+	cnt2 = 0;
+
+	m_rot = 0.0f;
 }
 
 // Executes the basic game loop.
@@ -97,54 +116,101 @@ void Game::Update(DX::StepTimer const& timer)
     elapsedTime;
 	//毎フレーム処理を書く
 	m_debugCamera->Update();
+	cnt++;
+	if (cnt == 3 && n > 0.0f)
+	{
+		cnt = 0;
+		n += -0.005f;
+	}
+	if (n <= 0.0f)
+	{
+		n = 0.0f;
+	}
+	
+	cnt2++;
+	static float angle2 = 1.0f;
 
+	Matrix scalemat;
+	//ワールド行列の計算
+	//スケーリング
+	
+	if (cnt2 <= 400)
+	{
+		angle2 += 0.01f;
+		scalemat = Matrix::CreateScale(angle2);
+	}
+	if (cnt2 > 400)
+	{
+		angle2 -= 0.01f;
+		scalemat = Matrix::CreateScale(angle2);
+	}
+	if (cnt2 == 800)
+	{
+		cnt2 = 0;
+	}
 
 	for (int i = 0; i < 20; i++)
 	{
-		//ワールド行列の計算
-		//スケーリング
-		Matrix scalemat = Matrix::CreateScale(1.0f);
-
-		//ロール
-		Matrix rotmatz = Matrix::CreateRotationZ(0);
-		//ピッチ（仰角）
-		Matrix rotmatx = Matrix::CreateRotationX(0);
-		//ヨー（方位角）
-		Matrix rotmaty[20];
-		rotmaty[i] = Matrix::CreateRotationY(XMConvertToRadians(36 * i));
-
 		static float angle = 0.0f;
 		angle += 0.001f;
-		static float angle2 = 0.0f;
-		angle2 -= 0.001f;
+		
 
+		//回転
 		Matrix rot = Matrix::CreateRotationY(angle);
-		Matrix rot2 = Matrix::CreateRotationY(angle2);
 
-		//回転行列の合成
-		Matrix rotmat[20];
-
-		rotmat[i] = rotmatz * rotmatx * rot * rotmaty[i];
-		if (i > 9)
-		{
-			rotmat[i] = rotmatz * rotmatx * rot2 * rotmaty[i];
-		}
-
-		//平行移動
-		Matrix tranamat = Matrix::CreateTranslation(20, 0, 0);
+		//ティーポットの平行移動
+		Matrix tranamat2 = Matrix::CreateTranslation(cosf(XMConvertToRadians(rnd[i])) * rnd2[i] * n, 0, sinf(XMConvertToRadians(rnd[i])) * rnd2[i] * n);
 
 		//ワールド行列の合成(SRT)
-
-		m_worldBall[i] = scalemat * tranamat * rotmat[i];
-		if (i > 9)
-		{
-			tranamat = Matrix::CreateTranslation(40, 0, 0);
-			m_worldBall[i] = scalemat * tranamat * rotmat[i];
-		}
-
-
+		m_worldPot[i] = scalemat * rot * tranamat2;
 	}
+
+	Keyboard::State key = m_keyboard->GetState();
+
 	
+	
+	
+
+	if (key.D)
+	{
+		m_rot += -0.03f;
+	}
+
+	if (key.A)
+	{
+		m_rot += 0.03f;
+	}
+	//前進処理
+	if (key.W)
+	{
+		Vector3 moveV(0, 0, -0.1f);
+
+		//移動ベクトルを自機の角度分回転させる
+		Matrix rotate = Matrix::CreateRotationY(m_rot);
+		moveV = Vector3::TransformNormal(moveV, rotate);
+
+		foot_pos += moveV;
+	}
+	//後退処理
+	if (key.S)
+	{
+		Vector3 moveV(0, 0, 0.1f);
+
+
+		//移動ベクトルを自機の角度分回転させる
+		Matrix rotate = Matrix::CreateRotationY(m_rot);
+		moveV = Vector3::TransformNormal(moveV, rotate);
+
+		foot_pos += moveV;
+	}
+
+	{//自機のワールド行列を計算
+
+		Matrix rotate = Matrix::CreateRotationY(m_rot);
+		Matrix transmat = Matrix::CreateTranslation(foot_pos);
+		
+		m_worldfoot = rotate * transmat;
+	}
 }
 
 // Draws the scene.
@@ -200,34 +266,17 @@ void Game::Render()
 	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
 
 	//モデルの描画
-	m_modelSkydome->Draw(m_d3dContext.Get(), *m_states, m_world, m_view, m_proj);
-	m_modelGround->Draw(m_d3dContext.Get(), *m_states, m_world, m_view, m_proj);
+	m_modelSkydome->Draw(m_d3dContext.Get(), *m_states, Matrix::Identity, m_view, m_proj);
+	m_modelGround->Draw(m_d3dContext.Get(), *m_states, Matrix::Identity, m_view, m_proj);
 	for (int i = 0; i < 20; i++)
 	{
-		m_modelBall->Draw(m_d3dContext.Get(), *m_states, m_worldBall[i], m_view, m_proj);
+		//m_modelBall->Draw(m_d3dContext.Get(), *m_states, m_worldBall[i], m_view, m_proj);
+		//m_modelPot->Draw(m_d3dContext.Get(), *m_states, m_worldPot[i], m_view, m_proj);
 	}
 	
-	
+	m_modelfoot->Draw(m_d3dContext.Get(), *m_states, m_worldfoot, m_view, m_proj);
 
 	m_batch->Begin();
-	//m_batch->DrawLine(
-	//	VertexPositionColor(
-	//		Vector3(0,0,0),
-	//		Color(1, 1, 1)),
-	//	VertexPositionColor(
-	//		Vector3(800, 600, 0),
-	//		Color(1, 0, 0))
-	//);
-
-	//VertexPositionColor v1(Vector3(0.0f, 0.5f, 0.5f), Colors::Red);
-	//VertexPositionColor v2(Vector3(0.5f, -0.5f, 0.5f), Colors::Black);
-	//VertexPositionColor v3(Vector3(-0.5f, -0.5f, 0.5f), Colors::White);
-
-	//VertexPositionColor v1(Vector3(400.f, 150.f, 0.f), Colors::Red);
-	//VertexPositionColor v2(Vector3(600.f, 450.f, 0.f), Colors::Black);
-	//VertexPositionColor v3(Vector3(200.f, 450.f, 0.f), Colors::White);
-
-	//m_batch->DrawTriangle(v1, v2, v3);
 
 	m_batch->DrawIndexed(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, indices, 6, vertices, 4);
 
