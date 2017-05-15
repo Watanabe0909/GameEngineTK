@@ -14,6 +14,7 @@
 #include <ctime>
 #include "DebugCamera.h"
 #include <Keyboard.h>
+#include "FollowCamera.h"
 
 
 // A basic game implementation that creates a D3D11 device and
@@ -116,7 +117,10 @@ private:
 	//自機のワールド行列
 	DirectX::SimpleMath::Matrix m_worldfoot;
 
-	float m_rot;
+	//
+	std::unique_ptr<FollowCamera> m_camera;
+
+	float foot_angle;
 
 	int rnd[20];
 	int rnd2[20];
@@ -124,4 +128,5 @@ private:
 	float n;
 	int cnt;
 	int cnt2;
+
 };

@@ -82,6 +82,9 @@ void Game::Initialize(HWND window, int width, int height)
 
 	m_keyboard = std::make_unique<Keyboard>();
 
+	m_camera = std::make_unique<FollowCamera>(m_outputWidth,m_outputHeight);
+
+
 	for (int i = 0; i < 20; i++)
 	{
 		rnd[i] = rand() % 360;
@@ -93,7 +96,9 @@ void Game::Initialize(HWND window, int width, int height)
 	n = 1.0f;
 	cnt2 = 0;
 
-	m_rot = 0.0f;
+	foot_angle = 0.0f;
+
+	foot_angle = 0.0f;
 }
 
 // Executes the basic game loop.
@@ -167,18 +172,19 @@ void Game::Update(DX::StepTimer const& timer)
 
 	Keyboard::State key = m_keyboard->GetState();
 
-	
-	
+	m_camera->Update();
+	m_view = m_camera->GetViewMatrix();
+	m_proj = m_camera->GetProjectionMatrix();
 	
 
 	if (key.D)
 	{
-		m_rot += -0.03f;
+		foot_angle += -0.03f;
 	}
 
 	if (key.A)
 	{
-		m_rot += 0.03f;
+		foot_angle += 0.03f;
 	}
 	//前進処理
 	if (key.W)
@@ -186,7 +192,7 @@ void Game::Update(DX::StepTimer const& timer)
 		Vector3 moveV(0, 0, -0.1f);
 
 		//移動ベクトルを自機の角度分回転させる
-		Matrix rotate = Matrix::CreateRotationY(m_rot);
+		Matrix rotate = Matrix::CreateRotationY(foot_angle);
 		moveV = Vector3::TransformNormal(moveV, rotate);
 
 		foot_pos += moveV;
@@ -198,7 +204,7 @@ void Game::Update(DX::StepTimer const& timer)
 
 
 		//移動ベクトルを自機の角度分回転させる
-		Matrix rotate = Matrix::CreateRotationY(m_rot);
+		Matrix rotate = Matrix::CreateRotationY(foot_angle);
 		moveV = Vector3::TransformNormal(moveV, rotate);
 
 		foot_pos += moveV;
@@ -206,7 +212,7 @@ void Game::Update(DX::StepTimer const& timer)
 
 	{//自機のワールド行列を計算
 
-		Matrix rotate = Matrix::CreateRotationY(m_rot);
+		Matrix rotate = Matrix::CreateRotationY(foot_angle);
 		Matrix transmat = Matrix::CreateTranslation(foot_pos);
 		
 		m_worldfoot = rotate * transmat;
@@ -243,21 +249,19 @@ void Game::Render()
 	m_d3dContext->OMSetBlendState(m_states->Opaque(), nullptr, 0xFFFFFFFF);
 	m_d3dContext->OMSetDepthStencilState(m_states->DepthNone(), 0);
 	m_d3dContext->RSSetState(m_states->CullNone());
-	//ビュー行列の生成
-	//m_view = Matrix::CreateLookAt(
-	//	Vector3(0.f, 0.f, 2.f),//カメラ視点
-	//	Vector3(1,0,0),	//カメラ参照点
-	//	Vector3(1,0,0)	//画面上方向ベクトル
-	//);
-	m_view = m_debugCamera->GetCameraMatrix();
 
-	//プロジェクション行列の生成
-	m_proj = Matrix::CreatePerspectiveFieldOfView(
-		XM_PI / 4.f,	//視野角（上下方向）
-		float(m_outputWidth) / float(m_outputHeight),	//アスペクト比
-		0.1f,	//ニアクリップ
-		500.f	//ファークリップ
-	);
+
+	//自機の追従するカメラ
+	m_camera->SetTargetPos(foot_pos);
+	m_camera->SetTargetAngle(foot_angle);
+
+	m_camera->Update();
+
+	m_view = m_camera->GetViewMatrix();
+	m_proj = m_camera->GetProjectionMatrix();
+
+
+
 
 	m_effect->SetView(m_view);
 	m_effect->SetProjection(m_proj);
